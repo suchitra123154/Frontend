@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Liked Products</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    background: #fafafa;
+    margin: 0;
+    padding: 20px;
+  }
+
+  h1 {
+    text-align: center;
+    color: #232F3E;
+  }
+
+  .nav-link {
+    display: block;
+    text-align: center;
+    margin-bottom: 20px;
+    color: #0066cc;
+    text-decoration: none;
+    font-weight: bold;
+  }
+
+  #liked-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    justify-content: center;
+    margin-top: 20px;
+  }
+
+  .product {
+    width: 180px;
+    background: #fff;
+    border-radius: 10px;
+    padding: 10px;
+    text-align: center;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  }
+
+  .product img {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    object-fit: cover;
+  }
+
+  .product h3 {
+    margin: 5px 0 0;
+    font-size: 16px;
+  }
+
+  .product p {
+    font-weight: bold;
+    margin: 2px 0 5px;
+  }
+
+  .remove-btn {
+    margin-top: 5px;
+    padding: 5px 10px;
+    background: red;
+    color: white;
+    border: none;
+    cursor: pointer;
+    border-radius: 5px;
+    font-size: 14px;
+  }
+
+  .clear-all-btn {
+    display: block;
+    margin: 0 auto;
+    background: #232F3E;
+    color: #fff;
+    border: none;
+    padding: 10px 15px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 15px;
+  }
+
+  .empty-msg {
+    text-align: center;
+    color: #888;
+    margin-top: 50px;
+    font-size: 18px;
+  }
+</style>
+</head>
+<body>
+
+<h1>Liked Products</h1>
+<a href="index.html" class="nav-link">← Back to Products</a>
+
+<button class="clear-all-btn" id="clearAll">🗑 Clear All</button>
+
+<div id="liked-container"></div>
+<div class="empty-msg" id="empty-msg" style="display:none;">No products liked yet!</div>
+
+<script>
+function renderLikedProducts() {
+  const container = document.getElementById('liked-container');
+  const emptyMsg = document.getElementById('empty-msg');
+  let likedProducts = JSON.parse(localStorage.getItem('likedProducts') || '[]');
+
+  container.innerHTML = '';
+
+  if (likedProducts.length === 0) {
+    emptyMsg.style.display = 'block';
+    return;
+  } else {
+    emptyMsg.style.display = 'none';
+  }
+
+  likedProducts.forEach((product, index) => {
+    const div = document.createElement('div');
+    div.className = 'product';
+    div.innerHTML = `
+      <img src="${product.img}" alt="${product.name}">
+      <h3>${product.name}</h3>
+      <p>₹${product.price}</p>
+      <button class="remove-btn">Remove</button>
+    `;
+    container.appendChild(div);
+
+    div.querySelector('.remove-btn').addEventListener('click', () => {
+      likedProducts.splice(index, 1);
+      localStorage.setItem('likedProducts', JSON.stringify(likedProducts));
+      renderLikedProducts();
+    });
+  });
+}
+
+document.getElementById('clearAll').addEventListener('click', () => {
+  localStorage.removeItem('likedProducts');
+  renderLikedProducts();
+});
+
+renderLikedProducts();
+</script>
+
+</body>
+</html>

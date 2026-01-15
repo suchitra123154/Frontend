@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Search Results</title>
+<style>
+  body{font-family:Arial,Helvetica,sans-serif;margin:0;padding:0;background:#fafafa}
+  header{display:flex;align-items:center;justify-content:space-between;padding:16px 24px;background:#f2f2f2}
+  header h1{margin:0;color:#232F3E}
+  #back{cursor:pointer;color:#FF9900}
+  #results{display:flex;flex-wrap:wrap;gap:20px;padding:20px;justify-content:center;max-width:1200px;margin:0 auto}
+  .product{width:160px;background:#fff;border-radius:10px;padding:10px;text-align:center;box-shadow:0 2px 5px rgba(0,0,0,0.08);position:relative}
+  .product img{width:100px;height:100px;border-radius:50%;object-fit:cover;margin-bottom:6px}
+  .add-cart-btn{background:#FF9900;color:#fff;border:none;padding:6px 8px;border-radius:4px;cursor:pointer;margin-top:6px}
+  .like-btn{position:absolute;top:6px;right:8px;font-size:18px;color:#888;cursor:pointer}
+  .like-btn.liked{color:red}
+  .no-results{padding:40px;text-align:center;color:#666}
+</style>
+</head>
+<body>
+<header>
+  <h1>Search Results</h1>
+  <div id="back" onclick="goBack()">← Back</div>
+</header>
+<main>
+  <div id="results"></div>
+</main>
+<script>
+// Read results from localStorage and render
+function goBack(){
+  // Clear stored results (optional) and go back
+  // localStorage.removeItem('searchResults');
+  // localStorage.removeItem('searchQuery');
+  window.location.href = 'index.html';
+}
+
+const resultsData = JSON.parse(localStorage.getItem('searchResults') || '[]');
+const query = localStorage.getItem('searchQuery') || '';
+const resultsContainer = document.getElementById('results');
+
+if (!resultsData || resultsData.length === 0) {
+  resultsContainer.innerHTML = `<div class="no-results">No products found matching "${escapeHtml(query)}"</div>`;
+} else {
+  resultsData.forEach((p, i) => {
+    const div = document.createElement('div');
+    div.className = 'product';
+    div.innerHTML = `
+      <img src="${escapeHtml(p.img)}" alt="${escapeHtml(p.name)}">
+      <h4>${escapeHtml(p.name)}</h4>
+      <p>₹${escapeHtml(p.price)}</p>
+      <button class="add-cart-btn" data-index="${i}">Add to Cart</button>
+      <span class="like-btn" data-index="${i}">&#10084;</span>
+    `;
+    resultsContainer.appendChild(div);
+  });
+}
+
+// small helper to avoid XSS when inserting from localStorage
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+// Add-to-cart and like functionality for results
+resultsContainer.addEventListener('click', (e) => {
+  if (e.target.classList.contains('add-cart-btn')) {
+    const idx = parseInt(e.target.dataset.index, 10);
+    const product = resultsData[idx];
+    if (!product) return;
+    const cart = JSON.parse(localStorage.getItem('cart') || '[]');
+    const existing = cart.find(p => p.name === product.name);
+    if (existing) existing.quantity += 1; else cart.push({...product, quantity: 1});
+    localStorage.setItem('cart', JSON.stringify(cart));
+    alert(product.name + ' added to cart');
+  }
+
+  if (e.target.classList.contains('like-btn')) {
+    const idx = parseInt(e.target.dataset.index, 10);
+    const product = resultsData[idx];
+    if (!product) return;
+    let liked = JSON.parse(localStorage.getItem('likedProducts') || '[]');
+    const exists = liked.some(p => p.name === product.name);
+    if (exists) {
+      liked = liked.filter(p => p.name !== product.name);
+      e.target.classList.remove('liked');
+    } else {
+      liked.push(product);
+      e.target.classList.add('liked');
+    }
+    localStorage.setItem('likedProducts', JSON.stringify(liked));
+  }
+});
+
+// mark liked buttons initial state
+(function markLiked(){
+  const liked = JSON.parse(localStorage.getItem('likedProducts') || '[]');
+  if (!liked.length) return;
+  document.querySelectorAll('.product').forEach((el, i) => {
+    const p = resultsData[i];
+    if (liked.some(x => x.name === p.name)) {
+      const likeBtn = el.querySelector('.like-btn');
+      if (likeBtn) likeBtn.classList.add('liked');
+    }
+  });
+})();
+</script>
+</body>
+</html>

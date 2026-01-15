@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Your Orders</title>
+<style>
+  body{font-family:Arial,Helvetica,sans-serif;margin:0;background:#fafafa}
+  header{display:flex;align-items:center;justify-content:space-between;padding:16px 24px;background:#f2f2f2}
+  header h1{margin:0;color:#232F3E}
+  #back{cursor:pointer;color:#FF9900}
+  #orders-list{padding:20px;max-width:1100px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+  .order-card{background:#fff;padding:12px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.06)}
+  .order-meta{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+  .order-items{display:flex;flex-wrap:wrap;gap:12px}
+  .ordered-product{width:160px;background:#fff;border-radius:8px;padding:8px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,0.06);position:relative}
+  .ordered-product img{width:100px;height:100px;object-fit:cover;border-radius:50%}
+  .icon-row{display:flex;gap:8px;justify-content:center;margin-top:8px}
+  .icon-btn{cursor:pointer;padding:6px;border-radius:6px;border:none;background:#f0f0f0}
+  .icon-btn.liked{color:red}
+  .no-orders{padding:60px;text-align:center;color:#666}
+  .orders-filter {
+    padding: 10px 20px;
+    background: #fff;
+    margin: 10px 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  }
+  .orders-filter label {
+    margin-right: 20px;
+    cursor: pointer;
+  }
+  .orders-filter input[type="radio"] {
+    margin-right: 5px;
+  }
+  .cancel-order-btn {
+    background: #dc3545;
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 13px;
+    margin-left: 10px;
+  }
+  .cancelled {
+    opacity: 0.6;
+    position: relative;
+  }
+  .cancelled::after {
+    content: 'CANCELLED';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) rotate(-15deg);
+    background: #dc3545;
+    color: white;
+    padding: 5px 10px;
+    border-radius: 4px;
+    font-weight: bold;
+    font-size: 16px;
+    z-index: 1;
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>Your Orders</h1>
+  <div id="back" onclick="goBack()">← Back</div>
+</header>
+<main>
+  <div class="orders-filter">
+    <label>
+      <input type="radio" name="order-filter" value="active" checked onchange="filterOrders('active')">
+      Active Orders
+    </label>
+    <label>
+      <input type="radio" name="order-filter" value="cancelled" onchange="filterOrders('cancelled')">
+      Cancelled Orders
+    </label>
+    <label>
+      <input type="radio" name="order-filter" value="all" onchange="filterOrders('all')">
+      All Orders
+    </label>
+  </div>
+  <div id="orders-list"></div>
+</main>
+<script>
+function goBack(){ window.location.href = 'index.html'; }
+
+let orders = JSON.parse(localStorage.getItem('orders') || '[]');
+const ordersList = document.getElementById('orders-list');
+
+function cancelOrder(orderId) {
+  if (!confirm('Are you sure you want to cancel this order?')) {
+    return;
+  }
+  
+  orders = orders.map(order => {
+    if (order.id === orderId) {
+      return { ...order, status: 'cancelled' };
+    }
+    return order;
+  });
+  
+  localStorage.setItem('orders', JSON.stringify(orders));
+  renderOrders(); // Re-render the orders list
+}
+
+let currentFilter = 'active';
+
+function filterOrders(filter) {
+  currentFilter = filter;
+  renderOrders();
+}
+
+function renderOrders() {
+  ordersList.innerHTML = '';
+  
+  // Filter orders based on current filter
+  let filteredOrders = orders;
+  if (currentFilter === 'active') {
+    filteredOrders = orders.filter(order => !order.status || order.status !== 'cancelled');
+  } else if (currentFilter === 'cancelled') {
+    filteredOrders = orders.filter(order => order.status === 'cancelled');
+  }
+  
+  if (!filteredOrders || filteredOrders.length === 0) {
+    const message = currentFilter === 'active' ? 'You have no active orders.' :
+                   currentFilter === 'cancelled' ? 'You have no cancelled orders.' :
+                   'You have no orders.';
+    ordersList.innerHTML = `<div class="no-orders">${message}</div>`;
+    return;
+  }
+  filteredOrders.slice().reverse().forEach(order => { // newest first
+    const card = document.createElement('div');
+    card.className = `order-card ${order.status === 'cancelled' ? 'cancelled' : ''}`;
+    const meta = document.createElement('div');
+    meta.className = 'order-meta';
+    meta.innerHTML = `
+      <div>
+        <strong>Order:</strong> ${order.id} 
+        <small style="color:#666">(${new Date(order.date).toLocaleString()})</small>
+        ${!order.status || order.status !== 'cancelled' ? 
+          `<button class="cancel-order-btn" onclick="cancelOrder('${order.id}')">Cancel Order</button>` : 
+          ''}
+      </div>
+      <div><strong>Total:</strong> ₹${order.total}</div>`;
+    card.appendChild(meta);
+
+    const info = document.createElement('div');
+    info.style.fontSize='13px';
+    info.style.color='#333';
+    info.style.marginBottom='8px';
+    info.innerHTML = `Customer: ${escapeHtml(order.name)} • ${escapeHtml(order.phone)}<br>Address: ${escapeHtml(order.address)}`;
+    card.appendChild(info);
+
+    const itemsRow = document.createElement('div');
+    itemsRow.className = 'order-items';
+
+    order.items.forEach((it, idx) => {
+      const p = document.createElement('div');
+      p.className = 'ordered-product';
+      p.innerHTML = `
+        <img src="${escapeHtml(it.img)}" alt="${escapeHtml(it.name)}">
+        <div style="font-size:13px;margin-top:6px">${escapeHtml(it.name)}</div>
+        <div style="font-size:13px;color:#666">Qty: ${escapeHtml(it.quantity)} • ₹${escapeHtml(it.price)}</div>
+        <div class="icon-row">
+          <button class="icon-btn ordered-badge" title="Ordered">📦</button>
+          <button class="icon-btn re-add" data-name="${escapeHtml(it.name)}" data-cat="${escapeHtml(it.category || '')}" data-price="${escapeHtml(it.price)}" data-img="${escapeHtml(it.img)}" data-qty="${escapeHtml(it.quantity)}">🛒</button>
+          <button class="icon-btn like-btn" data-name="${escapeHtml(it.name)}">&#10084;</button>
+        </div>
+      `;
+      itemsRow.appendChild(p);
+    });
+
+    card.appendChild(itemsRow);
+    ordersList.appendChild(card);
+  });
+}
+
+function escapeHtml(str){ return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+
+// Handle clicks: re-add to cart and like
+ordersList.addEventListener('click', function(e){
+  if (e.target.classList.contains('re-add') || e.target.closest('.re-add')){
+    const btn = e.target.classList.contains('re-add') ? e.target : e.target.closest('.re-add');
+    const name = btn.dataset.name;
+    const img = btn.dataset.img;
+    const price = Number(btn.dataset.price) || 0;
+    const qty = Number(btn.dataset.qty) || 1;
+    let cart = JSON.parse(localStorage.getItem('cart') || '[]');
+    const existing = cart.find(p=>p.name===name);
+    if (existing) existing.quantity += qty; else cart.push({name, img, price, quantity: qty});
+    localStorage.setItem('cart', JSON.stringify(cart));
+    alert(name + ' added to cart');
+    // update cart count in index if open (user may need to refresh index)
+  }
+
+  if (e.target.classList.contains('like-btn') || e.target.closest('.like-btn')){
+    const btn = e.target.classList.contains('like-btn') ? e.target : e.target.closest('.like-btn');
+    const name = btn.dataset.name;
+    let liked = JSON.parse(localStorage.getItem('likedProducts')||'[]');
+    if (liked.some(p=>p.name===name)){
+      liked = liked.filter(p=>p.name!==name);
+      btn.classList.remove('liked');
+    } else {
+      // add minimal product object
+      liked.push({name, img: btn.dataset.img || '', price: Number(btn.dataset.price) || 0});
+      btn.classList.add('liked');
+    }
+    localStorage.setItem('likedProducts', JSON.stringify(liked));
+  }
+});
+
+// Initialize the orders display
+renderOrders();
+</script>
+</body>
+</html>
